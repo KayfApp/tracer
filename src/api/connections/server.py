@@ -12,6 +12,6 @@ async def list_servers():
 async def add_server():
     pass
 
-@router.delete("/remove")
+@router.delete("/{server_id}/remove")
 async def remove_server():
     pass
