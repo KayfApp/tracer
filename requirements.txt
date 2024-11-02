@@ -2,3 +2,4 @@ fastapi
 deep-translator
 sqlalchemy
 psycopg
+sentence-transformers
