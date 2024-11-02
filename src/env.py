@@ -1,0 +1,6 @@
+# DATABASE
+PQ_URL = ""
+PQ_PORT = ""
+PQ_USERNAME = "" 
+PQ_PASSWORD = ""
+PQ_DB = ""
