@@ -3,3 +3,4 @@ deep-translator
 sqlalchemy
 psycopg
 sentence-transformers
+uvicorn
