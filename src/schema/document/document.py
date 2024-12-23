@@ -1,7 +1,8 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import relationship
+from schema.base import Base
 
-class Document(DeclarativeBase):
+class Document(Base):
     __tablename__ = 'documents'
     
     id = Column(Integer, primary_key=True)

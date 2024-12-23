@@ -1,7 +1,8 @@
 from sqlalchemy import Column, ForeignKey, Integer, Text
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import relationship
+from src.schema.base import Base
 
-class SubDocument(DeclarativeBase):
+class SubDocument(Base):
     __tablename__ = 'sub_documents'
     
     id = Column(Integer, primary_key=True)

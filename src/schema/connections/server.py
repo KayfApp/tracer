@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase
+from schema.base import Base
 
-class Server(DeclarativeBase):
+class Server(Base):
     __tablename__ = 'servers'
     
     id = Column(Integer, primary_key=True)
