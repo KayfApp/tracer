@@ -9,5 +9,8 @@ class BaseProvider(ABC):
         self.__data = data
 
     @abstractmethod
-    def run(self) -> None:
+    def run(self) -> bool:
+        pass
+
+    def update_last_indexed(self) -> None:
         pass

@@ -1,16 +1,18 @@
-from fastapi import APIRouter
+from typing import Annotated
+from fastapi import APIRouter, Query
 
 router = APIRouter(
     prefix='/search/exploration',
 )
 
-
-@router.get("/{server_id}")
-async def get_statistics():
-    """Get corpus statistics (server summary) of current server"""
+@router.get("/")
+async def get_statistics(providers : Annotated[list[str], Query()]):
     pass
 
-@router.get("/{server_id}/get-providers")
-async def get_providers():
-    """Get server provider list (for server summary) of current server"""
+@router.get("/get-providers")
+async def get_local_providers():
+    pass
+
+@router.get("/get-all-providers")
+async def get_all_providers():
     pass

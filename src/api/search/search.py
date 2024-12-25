@@ -1,10 +1,11 @@
+from typing import Annotated
 from fastapi import APIRouter
+from fastapi.params import Query
 
 router = APIRouter(
     prefix='/search',
 )
 
 @router.get("/")
-async def search():
-    """Perform search with given parameters for specified sub-corpus"""
+async def search(query : str, providers : Annotated[list[str], Query()]):
     pass

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, TIMESTAMP, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, TIMESTAMP, JSONB
 from sqlalchemy.orm import relationship
 
 from schema.base import Base
@@ -11,6 +11,6 @@ class ProviderInstance(Base):
     name = Column(String(100))
     desc = Column(String(500))
     last_indexed = Column(TIMESTAMP)
-    data = Column(JSON) # schema has to be equal to @BaseProvider.input_data
+    data = Column(JSONB) # schema has to be equal to @BaseProvider.input_data
     provider = relationship("BaseProvider", back_populates="instances")
     documents = relationship("Document", back_populates="origin")

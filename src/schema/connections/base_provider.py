@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, JSON
+from sqlalchemy import Column, Integer, String, Text, JSONB
 from sqlalchemy.orm import relationship
 
 from schema.base import Base
@@ -10,5 +10,5 @@ class BaseProvider(Base):
     name = Column(String(100))
     desc = Column(String(500))
     avatar = Column(Text)
-    schema = Column(JSON) # data schema required to load @provider_instances
+    schema = Column(JSONB) # data schema required to load @provider_instances
     instances = relationship("ProviderInstance", back_populates="provider", cascade="all, delete-orphan")

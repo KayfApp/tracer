@@ -7,7 +7,6 @@ from schema.base import Base
 ## SBERT / EMBEDDINGS ##
 
 EMBEDDING_ENCODER = SentenceTransformer("all-mpnet-base-v2")
-EMBEDDING_DIMS = 768
 
 ## DB ##
 
