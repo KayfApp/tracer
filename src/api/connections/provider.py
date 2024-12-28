@@ -1,5 +1,11 @@
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter
+from fastapi.exceptions import HTTPException
+from globals import DB_SESSION
+from schema.connections.provider import Provider
+from schema.connections.provider_instance import ProviderInstance
+from provider.provider_register import ProviderRegister
 
 router = APIRouter(
     prefix='/connections/providers',
@@ -7,28 +13,65 @@ router = APIRouter(
 
 @router.get("/")
 async def list_providers():
-    pass
+    with DB_SESSION() as session:   
+        providers = session.query(Provider).all()
+        return providers
 
 @router.get("/{provider_id}/get-form")
-async def get_provider_form(provider_id : int):
-    pass
+async def get_provider_form(provider_id : str):
+    with DB_SESSION() as session:   
+        provider = session.query(Provider).filter_by(id=provider_id).first()
+        if(provider != None):
+            return provider.schema
+        raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found.")
 
 @router.get("/{provider_id}/instances")
-async def list_instances(provider_id : int):
-    pass
+async def list_instances(provider_id : str):
+    with DB_SESSION() as session:   
+        provider = session.query(Provider).filter_by(id=provider_id).first()
+        if(provider != None):
+            return provider.instances
+        raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found.")
 
 @router.put("/{provider_id}/add")
-async def add_instance(provider_id : int, name : str, desc : str, data : str):
-    pass
+async def add_instance(provider_id : str, name : str, desc : str, data : dict):
+    with DB_SESSION() as session:   
+        provider = session.query(Provider).filter_by(id=provider_id).first()
+        if(provider != None):
+            instance = ProviderInstance(name=name, desc=desc, last_indexed=datetime.min, data=data, provider=provider)
+            session.add(instance)
+            session.commit()
+        else:
+            raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found.")
 
 @router.get("/{provider_instance_id}")
 async def instance_info(provider_instance_id : int):
-    pass
-
+    with DB_SESSION() as session:
+        instance = session.query(ProviderInstance).filter_by(id=provider_instance_id).first()
+        if(instance != None):
+            return instance
+        raise HTTPException(status_code=404, detail=f"Provider instance {provider_instance_id} not found.")
+        
 @router.post("/{provider_instance_id}/update")
 async def update_instance(provider_instance_id : int, name : Optional[str], desc : Optional[str]):
-    pass
+    with DB_SESSION() as session:
+        instance = session.query(ProviderInstance).filter_by(id=provider_instance_id).first()
+        if(instance != None):
+            if(name != None):
+                instance.name = name
+            if(desc != None):
+               instance.desc = desc
+            session.commit()
+        else:
+            raise HTTPException(status_code=404, detail=f"Provider instance {provider_instance_id} not found.")
 
 @router.delete("/{provider_instance_id}/remove")
 async def remove_instance(provider_instance_id : int):
-    pass
+    with DB_SESSION() as session:
+        instance = session.query(ProviderInstance).filter_by(id=provider_instance_id).first()
+        if(instance != None):
+            ProviderRegister.instance().remove(provider_instance_id)
+            session.delete(instance)
+            session.commit()
+        else:
+            raise HTTPException(status_code=404, detail=f"Provider instance {provider_instance_id} not found.")

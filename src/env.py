@@ -11,10 +11,15 @@ PSQL_PASSWORD = "admin"
 PSQL_DB = "tracer"
 
 # PATHS
-INDEX_PATH = f"/home/{os.getlogin()}/.cache/kayf/tracer/"
+CACHE_PATH = f"/home/{os.getlogin()}/.cache/kayf/tracer"
+LOGGING_PATH = f"{CACHE_PATH}/logs"
+INDEX_PATH = f"{CACHE_PATH}/index"
 
 # INDEX SIZE (= how much ram/vram I want to use) in MB
 MAX_INDEX_SIZE = 4096
 
 # INDEXING TIME IN SECONDS
 INDEXING_TIME = 60
+
+# HOW MANY THREADS SHOULD INDEX PROVIDER INSTANCES
+INDEXING_THREADS = 5

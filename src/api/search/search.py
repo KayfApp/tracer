@@ -1,11 +1,17 @@
 from typing import Annotated
 from fastapi import APIRouter
 from fastapi.params import Query
+from search import search as local_search
 
 router = APIRouter(
     prefix='/search',
 )
 
 @router.get("/")
-async def search(query : str, providers : Annotated[list[str], Query()]):
+async def search(query : str, top_n : int, providers : Annotated[list[str], Query()]):
+    # perform local search if requested
+
+    # perform server searches
+ 
+    # merge all results and return top_n
     pass
