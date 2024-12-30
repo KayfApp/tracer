@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from queue import Queue, Empty
 from globals import DB_SESSION, LOGGER
+from indexing.indexing_operation import IndexingOperation
 from schema.connections.provider_instance import ProviderInstance
 from env import INDEX_PATH
 from schema.connections.provider import Provider
@@ -16,12 +18,20 @@ class GenericProvider(ABC):
     Provider implementation without API specifics. Offers functions to manage and populate indices.
     Actual provider implementations only need to inherit from this class and override the run() function.
     """
-    def __init__(self, provider_instance_id : int) -> None:
-        self._provider_instance_id = provider_instance_id
+    def __init__(self, id : int) -> None:
+        self._id = id
         self._status = True
-        self._data = None
-        self._index_path = None
-        LOGGER.info(f"Created provider object for {self._provider_instance_id}.")
+        self._indexing_queue: Queue[IndexingOperation] = Queue()
+
+        with DB_SESSION() as session:
+            instance = session.query(ProviderInstance).filter_by(id=self._id).first()
+            if instance != None:
+                self._data = instance.data
+                self._index_path = f"{INDEX_PATH}/{self._NAME}/{instance.name}_{instance.id}"
+            else:
+                session.close()
+                raise LookupError(f"{id} not found")
+        LOGGER.info(f"Created provider object for {self._id}.")
 
     @abstractmethod
     def run(self) -> bool:
@@ -35,42 +45,47 @@ class GenericProvider(ABC):
         return self._status
 
     @property
-    def provider_instance_id(self):
-        return self._provider_instance_id
+    def id(self):
+        return self._id
 
     @property
     def last_indexed(self) -> None | datetime:
         with DB_SESSION() as session:
-            instance = session.query(ProviderInstance).filter_by(id=self._provider_instance_id).first()
+            instance = session.query(ProviderInstance).filter_by(id=self._id).first()
             if instance != None:
-                return instance.last_indexed
+                return instance.last_indexed.replace(tzinfo=timezone.utc)
 
     @property
-    def data(self) -> None | dict:
-        if self._data == None:
-            with DB_SESSION() as session:
-                instance = session.query(ProviderInstance).filter_by(id=self._provider_instance_id).first()
-                if instance != None:
-                    self._data = instance.data
+    def data(self) -> dict:
         return self._data
 
     @property
-    def index_path(self) -> None | str:
-        if self._index_path == None:
-            with DB_SESSION() as session:
-                instance = session.query(ProviderInstance).filter_by(id=self._provider_instance_id).first()
-                if instance != None:
-                    self._index_path = f"{INDEX_PATH}/{instance.name}_{instance.id}"
+    def index_path(self) -> str:
         return self._index_path
 
-    def update_last_indexed(self) -> None:
+    def update_last_indexed(self, time: datetime | None) -> None:
         with DB_SESSION() as session:
-            instance = session.query(ProviderInstance).filter_by(id=self._provider_instance_id).first()
+            instance = session.query(ProviderInstance).filter_by(id=self._id).first()
             if instance != None:
-                instance.last_indexed = datetime.now(tz=timezone.utc)
+                if time == None:
+                    instance.last_indexed = datetime.now(tz=timezone.utc)
+                else:
+                    instance.last_indexed = time
                 session.commit()
             else:
-                LOGGER.error(f"No matching provider instance found with key {self._provider_instance_id}. Can't update timestamp.")
+                LOGGER.error(f"No matching provider instance found with key {self._id}. Can't update timestamp.")
+
+    def push(self, value):
+        self._indexing_queue.put(value)
+
+    def pop(self):
+        return self._indexing_queue.get()
+
+    def pop_nowait(self):
+        try:
+            return self._indexing_queue.get()
+        except Empty:
+            return None
 
     @classmethod
     def provider_id(cls):
@@ -79,7 +94,7 @@ class GenericProvider(ABC):
     @classmethod
     def register_provider(cls) -> None:
         with DB_SESSION() as session:
-            provider = session.query(Provider).filter_by(id=cls._ID)
+            provider = session.query(Provider).filter_by(id=cls._ID).first()
             if provider == None:
                 provider = Provider(id=cls._ID, name=cls._NAME, desc=cls._DESCRIPTION, avatar=cls._AVATAR, schema=cls._SCHEMA)
                 session.add(provider)

@@ -1,42 +1,35 @@
-from abc import ABC, abstractmethod
-from collections import deque
+from indexing.index.generic_index import GenericIndex
+import faiss
+import os
 
-class GenericIndex(ABC):
+class FaissIndex(GenericIndex):
     _NAME: str = "GENERIC"
 
-    def __init__(self, path: str):
-        self._document_queue = deque()
-        self._path = path
+    def __init__(self):
+        self._faiss: faiss.FaissIndex | None = None
+        super()
 
-    @property
-    def path(self):
-        return self._path
-
-    @abstractmethod
     def load(self):
+        if os.path.exists(self._path):
+            index = faiss.read_index(self._path)
+        self._faiss
         pass
 
-    @abstractmethod
     def release(self):
         pass
 
-    @abstractmethod
     def search(self, **kwargs):
         pass
 
-    @abstractmethod
     def insert(self):
         pass
 
-    @abstractmethod
     def remove(self):
         pass
 
-    @abstractmethod
     def size(self):
         pass
 
-    @abstractmethod
     def cluster(self):
         pass
 
@@ -45,6 +38,5 @@ class GenericIndex(ABC):
         return cls._NAME
 
     @staticmethod
-    @abstractmethod
     def create(path: str):
         pass

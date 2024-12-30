@@ -1,11 +1,11 @@
-from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from globals import DB_SESSION
+from provider.provider_list import mapping
 from schema.connections.provider import Provider
 from schema.connections.provider_instance import ProviderInstance
-from provider.provider_register import ProviderRegister
+from provider.provider_instance_registry import ProviderInstanceRegistry
 
 router = APIRouter(
     prefix='/connections/providers',
@@ -38,9 +38,10 @@ async def add_instance(provider_id : str, name : str, desc : str, data : dict):
     with DB_SESSION() as session:   
         provider = session.query(Provider).filter_by(id=provider_id).first()
         if(provider != None):
-            instance = ProviderInstance(name=name, desc=desc, last_indexed=datetime.min, data=data, provider=provider)
+            instance = ProviderInstance(name=name, desc=desc, data=data, provider=provider)
             session.add(instance)
             session.commit()
+            ProviderInstanceRegistry.instance().add(instance.id, mapping()[provider_id](instance.id))
         else:
             raise HTTPException(status_code=404, detail=f"Provider {provider_id} not found.")
 
@@ -70,7 +71,7 @@ async def remove_instance(provider_instance_id : int):
     with DB_SESSION() as session:
         instance = session.query(ProviderInstance).filter_by(id=provider_instance_id).first()
         if(instance != None):
-            ProviderRegister.instance().remove(provider_instance_id)
+            ProviderInstanceRegistry.instance().remove(provider_instance_id)
             session.delete(instance)
             session.commit()
         else:
