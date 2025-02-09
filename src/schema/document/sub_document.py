@@ -3,6 +3,10 @@ from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from schema.base import Base
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from schema.document.document import Document
+
 class SubDocument(Base):
     __tablename__ = 'sub_documents'
     

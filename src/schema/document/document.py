@@ -3,6 +3,11 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from schema.base import Base
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from schema.connections.provider_instance import ProviderInstance
+    from schema.document.sub_document import SubDocument
+
 class Document(Base):
     __tablename__ = 'documents'
     

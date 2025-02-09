@@ -22,6 +22,8 @@ class GenericProvider(ABC):
         self._id = id
         self._status = True
         self._indexing_queue: Queue[IndexingOperation] = Queue()
+        self._last_indexed = datetime.min.replace(tzinfo=timezone.utc)
+        self._setup_completed = False
 
         with DB_SESSION() as session:
             instance = session.query(ProviderInstance).filter_by(id=self._id).first()
@@ -34,11 +36,23 @@ class GenericProvider(ABC):
         LOGGER.info(f"Created provider object for {self._id}.")
 
     @abstractmethod
+    def _setup(self) -> bool:
+        pass
+
+    @abstractmethod
     def run(self) -> bool:
+        if self._setup_completed == False:
+            self._setup_completed = True
+            return self._setup()
+        return True
+
+    @abstractmethod
+    def _clean_up(self) -> None:
         pass
 
     def kill(self):
         self._status = False
+        self._clean_up()
 
     @property
     def status(self):
@@ -49,11 +63,15 @@ class GenericProvider(ABC):
         return self._id
 
     @property
-    def last_indexed(self) -> None | datetime:
+    def last_fetched(self) -> None | datetime:
         with DB_SESSION() as session:
             instance = session.query(ProviderInstance).filter_by(id=self._id).first()
             if instance != None:
-                return instance.last_indexed.replace(tzinfo=timezone.utc)
+                return instance.last_fetched.replace(tzinfo=timezone.utc)
+
+    @property
+    def last_indexed(self) -> datetime:
+        return self._last_indexed
 
     @property
     def data(self) -> dict:
@@ -63,25 +81,32 @@ class GenericProvider(ABC):
     def index_path(self) -> str:
         return self._index_path
 
-    def update_last_indexed(self, time: datetime | None) -> None:
+    def update_last_fetched(self, time: datetime | None) -> None:
         with DB_SESSION() as session:
             instance = session.query(ProviderInstance).filter_by(id=self._id).first()
             if instance != None:
                 if time == None:
-                    instance.last_indexed = datetime.now(tz=timezone.utc)
+                    instance.last_fetched = datetime.now(tz=timezone.utc)
                 else:
-                    instance.last_indexed = time
+                    instance.last_fetched = time
                 session.commit()
             else:
                 LOGGER.error(f"No matching provider instance found with key {self._id}. Can't update timestamp.")
 
-    def push(self, value):
+    def update_last_indexed(self) -> None:
+        self._last_indexed = datetime.now(tz=timezone.utc)
+
+    @property
+    def queue_empty(self) -> bool:
+        return self._indexing_queue.qsize() == 0
+
+    def push(self, value : IndexingOperation):
         self._indexing_queue.put(value)
 
-    def pop(self):
+    def pop(self) -> IndexingOperation:
         return self._indexing_queue.get()
 
-    def pop_nowait(self):
+    def pop_nowait(self) -> IndexingOperation | None:
         try:
             return self._indexing_queue.get()
         except Empty:

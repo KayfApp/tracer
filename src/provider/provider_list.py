@@ -12,6 +12,7 @@ def load_providers():
         ProviderInstanceRegistry.instance().load_instances(p)
 
 internal_mapping = {}
+
 def mapping() -> Dict[str, Type[GenericProvider]]:
     if len(internal_mapping) == 0:
         for p in PROVIDERS:

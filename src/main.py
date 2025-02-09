@@ -24,8 +24,9 @@ async def lifespan(app: FastAPI):
         except PermissionError:
             print("Can't create directory for log files due to lacking permissions!")
     logging.basicConfig(filename=f"{LOGGING_PATH}/{datetime.now().strftime("%H_%M_%d_%m_%Y")}.log", level=logging.INFO)
-    load_providers()
     ProviderQueue.instance().start()
+
+    load_providers()
     yield
     ProviderQueue.instance().stop()
 

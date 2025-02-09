@@ -29,26 +29,32 @@ class ImapProvider(GenericProvider):
         "password": "text"
     }
 
-    def run(self) -> bool:
+    def _setup(self) -> bool:
         data = self.data
-        last_indexed = self.last_indexed
-        if last_indexed == None:
+        self._mail = imaplib.IMAP4_SSL(data['connection'])
+        self._mail.login(data['user'], data['password'])
+        return True
+
+    def run(self) -> bool:
+        if super().run() == False:
             return False
 
-        mail = imaplib.IMAP4_SSL(data['connection'])
-        mail.login(data['user'], data['password'])
-        mail.select("inbox")
+        last_fetched = self.last_fetched
+        if last_fetched == None:
+            return False
+
+        self._mail.select("inbox")
         utc_min_datetime = datetime.min.replace(tzinfo=timezone.utc)
-        search_criteria = "ALL" if last_indexed == utc_min_datetime else f"(SINCE {last_indexed.strftime("%d-%b-%Y")})"
+        search_criteria = "ALL" if last_fetched == utc_min_datetime else f"(SINCE {last_fetched.strftime("%d-%b-%Y")})"
         initiated_at = datetime.now(tz=timezone.utc)
 
-        _, data = mail.search(None, search_criteria)
+        _, data = self._mail.search(None, search_criteria)
         email_ids = data[0].split()
         emails = []
 
         for email_id in email_ids:
             # Fetch the email by ID
-            _, message_data = mail.fetch(email_id, "(RFC822)")
+            _, message_data = self._mail.fetch(email_id, "(RFC822)")
             
             for response_part in message_data:
                 if isinstance(response_part, tuple):
@@ -69,7 +75,7 @@ class ImapProvider(GenericProvider):
                     if(email_date == None):
                         continue
 
-                    if email_date > last_indexed:
+                    if email_date > last_fetched:
                         # Add email details to the list
                         emails.append({
                             "subject": subject,
@@ -78,7 +84,9 @@ class ImapProvider(GenericProvider):
                             "body": _get_email_body(msg)
                         })
 
-        mail.logout()
+        self.update_last_fetched(initiated_at)
         print(emails)
-        self.update_last_indexed(initiated_at)
         return True
+
+    def _clean_up(self) -> None:
+        self._mail.logout()

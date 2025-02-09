@@ -5,6 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from schema.base import Base
 from schema.document.document import Document
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from schema.connections.provider import Provider
+
 class ProviderInstance(Base):
     __tablename__ = 'provider_instances'
     
@@ -12,7 +16,7 @@ class ProviderInstance(Base):
     provider_id: Mapped[str] = mapped_column(String(100), ForeignKey('providers.id', ondelete='CASCADE'), nullable=False)
     name: Mapped[str] = mapped_column(String(100))
     desc: Mapped[str] = mapped_column(String(500))
-    last_indexed: Mapped[datetime] = mapped_column(DateTime, default=datetime.min.replace(tzinfo=timezone.utc))
+    last_fetched: Mapped[datetime] = mapped_column(DateTime, default=datetime.min.replace(tzinfo=timezone.utc))
     data: Mapped[dict] = mapped_column(JSON)  # schema has to be equal to @Provider.input_data
     provider: Mapped["Provider"] = relationship("Provider", back_populates="instances")
     documents: Mapped[list[Document]] = relationship("Document", back_populates="origin")

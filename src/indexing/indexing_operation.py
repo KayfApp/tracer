@@ -8,14 +8,9 @@ class IndexingOperationType(Enum):
     DELETE = 3
 
 class IndexingOperation:
-    def __init__(self, id: int, value : SubDocument, operation: IndexingOperationType):
-        self._id = id
+    def __init__(self, value : SubDocument, operation: IndexingOperationType):
         self._value = value
         self._operation = operation
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def value(self):
