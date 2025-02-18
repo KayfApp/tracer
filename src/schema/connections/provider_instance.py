@@ -19,4 +19,4 @@ class ProviderInstance(Base):
     last_fetched: Mapped[datetime] = mapped_column(DateTime, default=datetime.min.replace(tzinfo=timezone.utc))
     data: Mapped[dict] = mapped_column(JSON)  # schema has to be equal to @Provider.input_data
     provider: Mapped["Provider"] = relationship("Provider", back_populates="instances")
-    documents: Mapped[list[Document]] = relationship("Document", back_populates="origin")
+    documents: Mapped[list[Document]] = relationship("Document", back_populates="origin", cascade="all, delete-orphan")

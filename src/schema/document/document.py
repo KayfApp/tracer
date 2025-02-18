@@ -13,10 +13,9 @@ class Document(Base):
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     provider_instance_id: Mapped[int] = mapped_column(Integer, ForeignKey('provider_instances.id', ondelete='CASCADE'), nullable=False)
-    id_in_provider: Mapped[str] = mapped_column(Text)
     doc_type: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(64))
-    title: Mapped[str] = mapped_column(Text, nullable=False)  # Fixed capitalization error on 'Nullable'
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(Text)
     author_avatar: Mapped[str] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text)

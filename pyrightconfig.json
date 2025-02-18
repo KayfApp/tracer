@@ -1,0 +1,6 @@
+{
+  "python.analysis.useLibraryCodeForTypes": false,
+  "extraPaths": [
+    "./src"
+  ]
+}

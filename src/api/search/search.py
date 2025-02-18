@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter
 from fastapi.params import Query
-from search import search as local_search
 
 router = APIRouter(
     prefix='/search',

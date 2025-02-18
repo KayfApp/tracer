@@ -1,17 +1,18 @@
 import gc
 import math
 import os
-from typing import List, Optional
+from typing import List, Optional, Set
 import threading
 
 import faiss
 import numpy as np
 import torch
+from context import Context
 from env import EMBEDDING_DIMS
 from error.not_loaded_error import NotLoadedError
 from globals import EMBEDDING_ENCODER
 from indexing.index.generic_index import GenericIndex, SearchResult
-from schema.document.sub_document import SubDocument
+from provider.utils.pipeline import ProcessedDocument
 
 class FaissIndex(GenericIndex):
     _NAME: str = "FAISS"
@@ -22,24 +23,43 @@ class FaissIndex(GenericIndex):
         self._index = None
         self._is_clustered = False
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._size = -1
+        self._size: float = 0
+        self._ids: Set[int] = set()
         self._lock = threading.Lock()  # Lock for thread safety
+        self._context: Set[Context] = set()
 
-    def load(self) -> None:
+    def load(self, context : Optional[Context] = None) -> None:
         with self._lock:
+            if context:
+                self._context.add(context)
+
+            if self._index != None:
+                return
+
             if os.path.exists(self._path):
                 self._index = faiss.read_index(self._path)
                 if isinstance(self._index, faiss.IndexIVFFlat):
                     self._is_clustered = True
+                
+                metadata_store = torch.load(f"{self._path}.metadata")
+                self._size = metadata_store['size']
+                self._ids = metadata_store['ids']
             else:
                 base_index = faiss.IndexFlatIP(EMBEDDING_DIMS)
                 self._index = faiss.IndexIDMap2(base_index)
+                self._size = 0
+                self._ids = set()
 
-    def release(self) -> None:
+    def release(self, context: Optional[Context] = None) -> None:
         with self._lock:
-            self._index = None
-            self._is_clustered = False
-            gc.collect()
+            if context:
+                self._context.discard(context)
+                context.free()
+
+            if not self._context:
+                self._index = None
+                self._is_clustered = False
+                gc.collect()
 
     def search(self, query: str, k: int) -> List[SearchResult]:
         with self._lock:
@@ -60,15 +80,23 @@ class FaissIndex(GenericIndex):
 
             return sorted_results
 
-    def insert(self, documents: List[SubDocument]) -> None:
+    def has_id(self, id: int) -> bool:
+        return id in self._ids
+
+    def id_intersection(self, ids: Set[int]) -> Set[int]:
+        return ids & self._ids
+
+    def insert(self, documents: List[ProcessedDocument]) -> None:
         with self._lock:
             if self._index == None:
                 raise NotLoadedError(f"Index with path {self._path} not loaded!")
 
             embeddings = EMBEDDING_ENCODER.encode([document.data for document in documents], convert_to_numpy=True).astype('float32')
-            ids = np.array([document.id for document in documents]).astype('int64')
+            ids_list = [document.id for document in documents]
+            ids = np.array(ids_list).astype('int64')
             faiss.normalize_L2(embeddings)
             self._index.add_with_ids(embeddings, ids) #pyright: ignore
+            self._ids.update(ids_list)
 
     def remove(self, ids: List[int]) -> None:
         with self._lock:
@@ -77,26 +105,42 @@ class FaissIndex(GenericIndex):
 
             np_ids = np.array(ids).astype('int64')
             self._index.remove_ids(np_ids)
+            for id in ids:
+                self._ids.discard(id)
 
     def save(self, path: Optional[str] = None) -> None:
         with self._lock:
             faiss.write_index(self._index, path != None and self._path)
+            torch.save({
+                'size': self._size,
+                'ids': self._ids
+            }, f"{self._path}.metadata")
 
     @property
     def size(self) -> float:
         with self._lock:
             if self._index != None:
                 self._size = 0
-                dim = self._index.d
+                dim = EMBEDDING_DIMS
                 len = self._index.ntotal
                 # vector size
                 self._size = 4 * dim * len # overhead
-                if self._is_clustered:
-                    clusters = self._index.index.nlist
+                if isinstance(self._index, faiss.IndexIVFFlat):
+                    clusters = self._index.nlist
                     self._size += clusters * dim * 4
                     self._size += len * 4 * 4
 
-            return self._size
+            return self._size/(1024**2)
+
+
+    @property
+    def max_doc_size(self) -> float:
+        return (4 * EMBEDDING_DIMS)/(1024**2)
+ 
+    def capacity(self, max_index_size: float) -> int:
+        curr_size = self.size
+        max_doc_size = self.max_doc_size
+        return max(0, int((max_index_size - curr_size)/max_doc_size))        
 
     def cluster(self, cluster_n: int) -> None:
         with self._lock:
@@ -104,9 +148,9 @@ class FaissIndex(GenericIndex):
                 raise NotLoadedError(f"Index with path {self._path} not loaded!")
             
             len = self._index.ntotal
-            dim = self._index.d
+            dim = EMBEDDING_DIMS
 
-            if len > 0:
+            if len > 0 and not isinstance(self._index, faiss.IndexIVFFlat):
                 quantizer = faiss.IndexFlatIP(dim)  # Use Inner Product (IP) as metric
                 ivf_index = faiss.IndexIVFFlat(quantizer, dim, cluster_n, faiss.METRIC_INNER_PRODUCT)
                 ids = faiss.vector_to_array(self._index.id_map)
