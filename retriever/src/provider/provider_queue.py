@@ -154,4 +154,3 @@ class ProviderQueue(ProviderInstanceRegistryObserver):
             if self._provider_instances:
                 return self._provider_instances[0]  # pyright: ignore
             return None
-

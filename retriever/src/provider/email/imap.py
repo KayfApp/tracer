@@ -1,8 +1,6 @@
-
 from datetime import datetime, timezone
 
 from globals import LOGGER
-from indexing.indexing_operation import IndexingOperation, IndexingOperationType
 from provider.generic_provider import GenericProvider
 import imaplib
 import email
@@ -10,11 +8,9 @@ import email.utils
 from email.header import decode_header
 from typing import List, Dict, Optional
 
-from provider.parser.to_plain import html_to_plain, markdown_to_plain
+from provider.parser.markup_parser import html_to_plain, markdown_to_plain
 from provider.utils.pipeline import pipeline
 from provider.utils.text_type_detector import TextType, detect_text_type
-from provider.utils.tokenizer import clean_text
-from provider.utils.translator import translate_to_english
 
 def _get_email_body(msg) -> Optional[str]:
     """Extracts the body from the email message."""
@@ -121,7 +117,6 @@ class ImapProvider(GenericProvider):
                                 "body": _get_email_body(msg)
                             })
 
-            self.update_last_fetched(initiated_at)
             for mail in emails:
                 text = mail["body"]
                 ft = detect_text_type(text)
@@ -132,7 +127,9 @@ class ImapProvider(GenericProvider):
                 
                 docs = pipeline(text, self.id, 'Email', "", mail["subject"], mail["from"], self._AVATAR, '', '', mail["date"])
                 for doc in docs:
-                    self.push(IndexingOperation(doc, IndexingOperationType.INSERT))
+                    print(doc.id, doc.data)
+
+            self.update_last_fetched(initiated_at)
             return True
 
         except imaplib.IMAP4.error as e:

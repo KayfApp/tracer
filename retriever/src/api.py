@@ -8,7 +8,7 @@ from schema.connections.provider_instance import ProviderInstance
 from provider.provider_instance_registry import ProviderInstanceRegistry
 
 router = APIRouter(
-    prefix='/connections/providers',
+    prefix='',
 )
 
 @router.get("/")

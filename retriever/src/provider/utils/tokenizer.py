@@ -1,9 +1,6 @@
 import re
-from typing import List, Tuple
-import nltk
+from typing import List
 from nltk.tokenize import sent_tokenize, word_tokenize
-
-nltk.download('punkt')
 
 def clean_text(text: str) -> str:
     """

@@ -1,7 +1,6 @@
 fastapi
 sqlalchemy
 psycopg
-sentence-transformers
 uvicorn
 sortedcontainers
 googletrans==4.0.2 

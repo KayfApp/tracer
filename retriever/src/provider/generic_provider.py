@@ -1,12 +1,8 @@
 from typing import Optional
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-import os
-from queue import Queue, Empty
 from globals import DB_SESSION, LOGGER
-from indexing.indexing_operation import IndexingOperation
 from schema.connections.provider_instance import ProviderInstance
-from env import INDEX_PATH
 from schema.connections.provider import Provider
 
 class GenericProvider(ABC):
@@ -33,7 +29,6 @@ class GenericProvider(ABC):
         """
         self._id = id
         self._status = True
-        self._indexing_queue: Queue[IndexingOperation] = Queue()
         self._last_indexed = datetime.min.replace(tzinfo=timezone.utc)
         self._setup_completed = False
 
@@ -41,12 +36,6 @@ class GenericProvider(ABC):
             instance = session.query(ProviderInstance).filter_by(id=self._id).first()
             if instance is not None:
                 self._data = instance.data
-                self._index_path = f"{INDEX_PATH}/{self._NAME}/{instance.name}_{instance.id}"
-                if not os.path.exists(self._index_path):
-                    try:
-                        os.makedirs(self._index_path)
-                    except PermissionError:
-                        LOGGER.error(f"Can't create directory due to lack of permissions! {self._index_path}")
             else:
                 session.close()
                 raise LookupError(f"Provider instance with ID {id} not found.")
@@ -83,12 +72,6 @@ class GenericProvider(ABC):
         """Terminates the provider's operation and cleans up resources."""
         self._status = False
         self._clean_up()
-        if os.path.exists(self._index_path):
-            try:
-                os.rmdir(self._index_path)
-            except PermissionError:
-                LOGGER.error(f"Can't delete directory due to lack of permissions! {self._index_path}")
-
 
     @property
     def status(self) -> bool:
@@ -139,15 +122,6 @@ class GenericProvider(ABC):
         """
         return self._data
 
-    @property
-    def index_path(self) -> str:
-        """Gets the path where the index is stored.
-
-        Returns:
-            str: The index path.
-        """
-        return self._index_path
-
     def update_last_fetched(self, time: Optional[datetime]) -> None:
         """Updates the last fetched timestamp in the database.
 
@@ -165,42 +139,6 @@ class GenericProvider(ABC):
     def update_last_indexed(self) -> None:
         """Updates the last indexed timestamp to the current time."""
         self._last_indexed = datetime.now(tz=timezone.utc)
-
-    @property
-    def queue_empty(self) -> bool:
-        """Checks if the indexing queue is empty.
-
-        Returns:
-            bool: True if the queue is empty, False otherwise.
-        """
-        return self._indexing_queue.qsize() == 0
-
-    def push(self, value: IndexingOperation) -> None:
-        """Pushes a new indexing operation onto the queue.
-
-        Args:
-            value (IndexingOperation): The indexing operation to add to the queue.
-        """
-        self._indexing_queue.put(value)
-
-    def pop(self) -> IndexingOperation:
-        """Removes and returns the next indexing operation from the queue.
-
-        Returns:
-            IndexingOperation: The next indexing operation in the queue.
-        """
-        return self._indexing_queue.get()
-
-    def pop_nowait(self) -> Optional[IndexingOperation]:
-        """Removes and returns the next indexing operation from the queue without blocking.
-
-        Returns:
-            Optional[IndexingOperation]: The next indexing operation, or None if the queue is empty.
-        """
-        try:
-            return self._indexing_queue.get_nowait()
-        except Empty:
-            return None
 
     @classmethod
     def provider_id(cls) -> str:

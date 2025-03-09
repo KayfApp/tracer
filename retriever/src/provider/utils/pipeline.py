@@ -1,11 +1,10 @@
 from datetime import datetime
 import re
 from typing import List
-from globals import DB_SESSION, TOKENIZER
-from provider.parser.to_plain import html_to_plain, markdown_to_plain
-from provider.utils.text_type_detector import TextType, detect_text_type
+from globals import DB_SESSION
 from provider.utils.tokenizer import clean_text, split_text_into_sentence_groups
 from provider.utils.translator import translate_to_english
+from env import EMBEDDING_TOKEN_LIMIT
 from schema.connections.provider_instance import ProviderInstance
 from schema.document.document import Document
 from schema.document.sub_document import SubDocument
@@ -41,12 +40,11 @@ def pipeline(content: str,
 
     This function performs the following steps:
     1. Extracts and replaces URLs with placeholders.
-    2. Converts HTML/Markdown content to plain text.
-    3. Cleans and translates text to English.
-    4. Splits text into token-limited sentence groups.
-    5. Reinserts original URLs into processed text.
-    6. Persists documents and sub-documents in the database.
-    7. Returns processed sub-documents with database IDs and cleaned text.
+    2. Translates text to English.
+    3. Splits text into token-limited sentence groups.
+    4. Reinserts original URLs into processed text.
+    5. Persists documents and sub-documents in the database.
+    6. Returns processed sub-documents with database IDs and cleaned text.
 
     Args:
         content: Raw input text (may contain HTML/Markdown formatting and URLs)
@@ -79,15 +77,8 @@ def pipeline(content: str,
     links = re.findall(r'https?://\S+|www\.\S+', content)
     content = re.sub(r'https?://\S+|www\.\S+', 'LINK_PLACEHOLDER', content)
     
-    # Clean data
-    text_type = detect_text_type(content)
-    if text_type == TextType.HTML:
-        content = html_to_plain(content)
-    elif text_type == TextType.MARKDOWN:
-        content = markdown_to_plain(content)
-    
     content = translate_to_english(clean_text(content))
-    sentences = split_text_into_sentence_groups(content, TOKENIZER.model_max_length)
+    sentences = split_text_into_sentence_groups(content, EMBEDDING_TOKEN_LIMIT)
 
 
     # Remove placeholders
