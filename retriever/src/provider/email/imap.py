@@ -7,7 +7,7 @@ import email
 import email.utils
 from email.header import decode_header
 from typing import List, Dict, Optional
-
+from provider.parser.cleanup import clean_up
 from provider.parser.markup_parser import html_to_plain, markdown_to_plain
 from provider.utils.pipeline import pipeline
 from provider.utils.text_type_detector import TextType, detect_text_type
@@ -119,12 +119,7 @@ class ImapProvider(GenericProvider):
 
             for mail in emails:
                 text = mail["body"]
-                ft = detect_text_type(text)
-                if ft == TextType.HTML:
-                    text = html_to_plain(text)
-                elif ft == TextType.MARKDOWN:
-                    text = markdown_to_plain(text)
-                
+                text = clean_up(text)               
                 docs = pipeline(text, self.id, 'Email', "", mail["subject"], mail["from"], self._AVATAR, '', '', mail["date"])
                 for doc in docs:
                     print(doc.id, doc.data)
